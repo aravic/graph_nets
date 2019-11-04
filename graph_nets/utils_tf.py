@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
 """Tensorflow ops and helpers useful to manipulate graphs.
 
 This module contains utility functions to operate with `Tensor`s representations
@@ -68,7 +67,7 @@ from graph_nets import utils_np
 import six
 from six.moves import range
 import tensorflow as tf
-
+from tensorflow.python.ops.ragged import ragged_util
 
 NODES = graphs.NODES
 EDGES = graphs.EDGES
@@ -101,7 +100,9 @@ def _get_shape(tensor):
   if all(s is not None for s in shape_list):
     return shape_list
   shape_tensor = tf.shape(tensor)
-  return [shape_tensor[i] if s is None else s for i, s in enumerate(shape_list)]
+  return [
+      shape_tensor[i] if s is None else s for i, s in enumerate(shape_list)
+  ]
 
 
 def _axis_to_inside(tensor, axis):
@@ -206,8 +207,8 @@ def _placeholders_from_graphs_tuple(graph, force_dynamic_num_graphs=True):
   """
   graph_dtypes = graph.map(
       lambda v: tf.as_dtype(v.dtype) if v is not None else None, ALL_FIELDS)
-  graph_shapes = graph.map(lambda v: list(v.shape) if v is not None else None,
-                           ALL_FIELDS)
+  graph_shapes = graph.map(lambda v: list(v.shape)
+                           if v is not None else None, ALL_FIELDS)
   return _build_placeholders_from_specs(
       graph_dtypes,
       graph_shapes,
@@ -389,7 +390,9 @@ def concat(input_graphs, axis, name="graph_concat"):
       globals_ = tf.concat(globals_, axis, name="concat_globals")
     else:
       globals_ = None
-    output = input_graphs[0].replace(nodes=nodes, edges=edges, globals=globals_)
+    output = input_graphs[0].replace(nodes=nodes,
+                                     edges=edges,
+                                     globals=globals_)
     if axis != 0:
       return output
     n_node_per_tuple = tf.stack(
@@ -397,10 +400,12 @@ def concat(input_graphs, axis, name="graph_concat"):
     n_edge_per_tuple = tf.stack(
         [tf.reduce_sum(gr.n_edge) for gr in input_graphs])
     offsets = _compute_stacked_offsets(n_node_per_tuple, n_edge_per_tuple)
-    n_node = tf.concat(
-        [gr.n_node for gr in input_graphs], axis=0, name="concat_n_node")
-    n_edge = tf.concat(
-        [gr.n_edge for gr in input_graphs], axis=0, name="concat_n_edge")
+    n_node = tf.concat([gr.n_node for gr in input_graphs],
+                       axis=0,
+                       name="concat_n_node")
+    n_edge = tf.concat([gr.n_edge for gr in input_graphs],
+                       axis=0,
+                       name="concat_n_edge")
     receivers = [
         gr.receivers for gr in input_graphs if gr.receivers is not None
     ]
@@ -411,8 +416,10 @@ def concat(input_graphs, axis, name="graph_concat"):
     senders = senders or None
     if senders:
       senders = tf.concat(senders, axis, name="concat_senders") + offsets
-    return output.replace(
-        receivers=receivers, senders=senders, n_node=n_node, n_edge=n_edge)
+    return output.replace(receivers=receivers,
+                          senders=senders,
+                          n_node=n_node,
+                          n_edge=n_edge)
 
 
 def stop_gradient(graph,
@@ -507,6 +514,39 @@ def make_runnable_in_session(graph, name="make_graph_runnable_in_session"):
     return graph.map(lambda _: tf.no_op(), none_fields)
 
 
+# def repeat(tensor, repeats, axis=0, name="repeat"):
+#   """Repeats a `tf.Tensor`'s elements along an axis by custom amounts.
+
+#   Equivalent to Numpy's `np.repeat`.
+#   `tensor and `repeats` must have the same numbers of elements along `axis`.
+
+#   Args:
+#     tensor: A `tf.Tensor` to repeat.
+#     repeats: A 1D sequence of the number of repeats per element.
+#     axis: An axis to repeat along. Defaults to 0.
+#     name: (string, optional) A name for the operation.
+
+#   Returns:
+#     The `tf.Tensor` with repeated values.
+#   """
+#   with tf.name_scope(name):
+#     cumsum = tf.cumsum(repeats)
+#     range_ = tf.range(cumsum[-1])
+
+#     indicator_matrix = tf.cast(tf.expand_dims(range_, 1) >= cumsum, tf.int32)
+#     indices = tf.reduce_sum(indicator_matrix, reduction_indices=1)
+
+#     shifted_tensor = _axis_to_inside(tensor, axis)
+#     repeated_shifted_tensor = tf.gather(shifted_tensor, indices)
+#     repeated_tensor = _inside_to_axis(repeated_shifted_tensor, axis)
+
+#     shape = tensor.shape.as_list()
+#     shape[axis] = None
+#     repeated_tensor.set_shape(shape)
+
+#     return repeated_tensor
+
+
 def repeat(tensor, repeats, axis=0, name="repeat"):
   """Repeats a `tf.Tensor`'s elements along an axis by custom amounts.
 
@@ -523,21 +563,7 @@ def repeat(tensor, repeats, axis=0, name="repeat"):
     The `tf.Tensor` with repeated values.
   """
   with tf.name_scope(name):
-    cumsum = tf.cumsum(repeats)
-    range_ = tf.range(cumsum[-1])
-
-    indicator_matrix = tf.cast(tf.expand_dims(range_, 1) >= cumsum, tf.int32)
-    indices = tf.reduce_sum(indicator_matrix, reduction_indices=1)
-
-    shifted_tensor = _axis_to_inside(tensor, axis)
-    repeated_shifted_tensor = tf.gather(shifted_tensor, indices)
-    repeated_tensor = _inside_to_axis(repeated_shifted_tensor, axis)
-
-    shape = tensor.shape.as_list()
-    shape[axis] = None
-    repeated_tensor.set_shape(shape)
-
-    return repeated_tensor
+    return ragged_util.repeat(tensor, repeats, axis=axis)
 
 
 def _populate_number_fields(data_dict):
@@ -731,9 +757,10 @@ def fully_connect_graph_static(graph,
 
   num_graphs = graph.n_node.shape.as_list()[0]
   if num_graphs is None:
-    raise ValueError("Number of graphs must be known at construction time when "
-                     "using `fully_connect_graph_static`. Did you mean to use "
-                     "`fully_connect_graph_dynamic`?")
+    raise ValueError(
+        "Number of graphs must be known at construction time when "
+        "using `fully_connect_graph_static`. Did you mean to use "
+        "`fully_connect_graph_dynamic`?")
   num_nodes = graph.nodes.shape.as_list()[0]
   if num_nodes is None:
     raise ValueError("Number of nodes must be known at construction time when "
@@ -753,12 +780,12 @@ def fully_connect_graph_static(graph,
       n_edges += num_nodes_per_graph
 
     all_graph_edges = {
-        k: tf.tile(v, [num_graphs]) for k, v in six.iteritems(one_graph_edges)
+        k: tf.tile(v, [num_graphs])
+        for k, v in six.iteritems(one_graph_edges)
     }
     offsets = [
         num_nodes_per_graph * i  # pylint: disable=g-complex-comprehension
-        for i in range(num_graphs)
-        for _ in range(n_edges)
+        for i in range(num_graphs) for _ in range(n_edges)
     ]
     all_graph_edges[RECEIVERS] += offsets
     all_graph_edges[SENDERS] += offsets
@@ -791,8 +818,8 @@ def fully_connect_graph_dynamic(graph,
   with tf.name_scope(name):
 
     def body(i, senders, receivers, n_edge):
-      edges = _create_complete_edges_from_nodes_dynamic(graph.n_node[i],
-                                                        exclude_self_edges)
+      edges = _create_complete_edges_from_nodes_dynamic(
+          graph.n_node[i], exclude_self_edges)
       return (i + 1, senders.write(i, edges[SENDERS]),
               receivers.write(i, edges[RECEIVERS]),
               n_edge.write(i, edges[N_EDGE]))
@@ -961,19 +988,17 @@ def _check_valid_index(index, element_name):
     if index.dtype != tf.int32 and index.dtype != tf.int64:
       raise TypeError(
           "Invalid tensor `{}` parameter. Valid tensor indices must have "
-          "types tf.int32 or tf.int64, got {}."
-          .format(element_name, index.dtype))
+          "types tf.int32 or tf.int64, got {}.".format(element_name,
+                                                       index.dtype))
     if index.shape.as_list():
       raise TypeError(
           "Invalid tensor `{}` parameter. Valid tensor indices must be scalars "
-          "with shape [], got{}"
-          .format(element_name, index.shape.as_list()))
+          "with shape [], got{}".format(element_name, index.shape.as_list()))
     return True
   else:
     raise TypeError(
         "Invalid `{}` parameter. Valid tensor indices must be integers "
-        "or tensors, got {}."
-        .format(element_name, type(index)))
+        "or tensors, got {}.".format(element_name, type(index)))
 
 
 def get_graph(input_graphs, index, name="get_graph"):
@@ -1009,27 +1034,27 @@ def get_graph(input_graphs, index, name="get_graph"):
   if isinstance(index, (int, tf.Tensor)):
     _check_valid_index(index, "index")
     graph_slice = slice(index, index + 1)
-  elif (isinstance(index, slice) and
-        _check_valid_index(index.stop, "index.stop") and
-        (index.start is None or _check_valid_index(
-            index.start, "index.start"))):
+  elif (
+      isinstance(index, slice) and _check_valid_index(index.stop, "index.stop")
+      and
+      (index.start is None or _check_valid_index(index.start, "index.start"))):
     if index.step is not None:
-      raise ValueError("slices with step/stride are not supported, got {}"
-                       .format(index))
+      raise ValueError(
+          "slices with step/stride are not supported, got {}".format(index))
     graph_slice = index
   else:
     raise TypeError(
         "unsupported index type got {} with type {}. Index must be a valid "
-        "scalar integer (tensor or int) or a slice of such values."
-        .format(index, type(index)))
+        "scalar integer (tensor or int) or a slice of such values.".format(
+            index, type(index)))
 
   start_slice = slice(0, graph_slice.start)
 
   with tf.name_scope(name):
-    start_node_index = tf.reduce_sum(
-        input_graphs.n_node[start_slice], name="start_node_index")
-    start_edge_index = tf.reduce_sum(
-        input_graphs.n_edge[start_slice], name="start_edge_index")
+    start_node_index = tf.reduce_sum(input_graphs.n_node[start_slice],
+                                     name="start_node_index")
+    start_edge_index = tf.reduce_sum(input_graphs.n_edge[start_slice],
+                                     name="start_edge_index")
     end_node_index = start_node_index + tf.reduce_sum(
         input_graphs.n_node[graph_slice], name="end_node_index")
     end_edge_index = start_edge_index + tf.reduce_sum(
@@ -1040,19 +1065,20 @@ def get_graph(input_graphs, index, name="get_graph"):
     sliced_graphs_dict = {}
 
     for field in set(GRAPH_NUMBER_FIELDS) | {"globals"}:
-      sliced_graphs_dict[field] = safe_slice_none(
-          getattr(input_graphs, field), graph_slice)
+      sliced_graphs_dict[field] = safe_slice_none(getattr(input_graphs, field),
+                                                  graph_slice)
 
     field = "nodes"
-    sliced_graphs_dict[field] = safe_slice_none(
-        getattr(input_graphs, field), nodes_slice)
+    sliced_graphs_dict[field] = safe_slice_none(getattr(input_graphs, field),
+                                                nodes_slice)
 
     for field in {"edges", "senders", "receivers"}:
-      sliced_graphs_dict[field] = safe_slice_none(
-          getattr(input_graphs, field), edges_slice)
-      if (field in {"senders", "receivers"} and
-          sliced_graphs_dict[field] is not None):
-        sliced_graphs_dict[field] = sliced_graphs_dict[field] - start_node_index
+      sliced_graphs_dict[field] = safe_slice_none(getattr(input_graphs, field),
+                                                  edges_slice)
+      if (field in {"senders", "receivers"}
+          and sliced_graphs_dict[field] is not None):
+        sliced_graphs_dict[
+            field] = sliced_graphs_dict[field] - start_node_index
 
     return graphs.GraphsTuple(**sliced_graphs_dict)
 
@@ -1070,3 +1096,31 @@ def get_num_graphs(input_graphs, name="get_num_graphs"):
   """
   with tf.name_scope(name):
     return _get_shape(input_graphs.n_node)[0]
+
+
+def sparse_to_dense_indices(sparse_indices):
+  """
+    Given [2, 1, 3] our goal is to convert this to the dense index form:
+    [[0, 0], [0, 1],
+    [1, 0],
+    [2, 0], [2, 1], [2, 2]]].
+
+    For this,
+    first we generate the indices [0, 0, 1, 2, 2, 2] by
+    repeating [0, 1, 2] with [2, 1, 3] as repeats.
+
+    Second, we generate the indices [0, 1, 0, 0, 1, 2] by
+    first calculating the cumsums C = [0, 2, 3, 6]
+    Now we use repeat_range to repeat the range(max(C))
+    using C as our splits and 1 as the repeat size.
+    Finally, we subtract the array obtained
+    by repeating (C[:-1]) [0, 2, 3] with [2, 1, 3] as repeats.
+  """
+  idx1 = ragged_util.repeat(tf.range(sparse_indices.shape[0]),
+                            sparse_indices,
+                            axis=-1)
+  cumsum = tf.cumsum(tf.concat([[0], sparse_indices], 0))
+  idx2 = ragged_util.repeat_ranges(tf.range(tf.reduce_max(cumsum)), cumsum,
+                                   tf.constant(1))
+  idx2 -= ragged_util.repeat(cumsum[:-1], sparse_indices, -1)
+  return tf.stack([idx1, idx2], axis=-1)

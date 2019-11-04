@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
 """Building blocks for Graph Networks.
 
 This module contains elementary building blocks of graph networks:
@@ -32,12 +31,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 from graph_nets import graphs
 from graph_nets import utils_tf
 import sonnet as snt
 import tensorflow as tf
-
 
 NODES = graphs.NODES
 EDGES = graphs.EDGES
@@ -60,7 +57,8 @@ def _validate_graph(graph, mandatory_fields, additional_message=None):
 
 
 def _validate_broadcasted_graph(graph, from_field, to_field):
-  additional_message = "when broadcasting {} to {}".format(from_field, to_field)
+  additional_message = "when broadcasting {} to {}".format(
+      from_field, to_field)
   _validate_graph(graph, [from_field, to_field], additional_message)
 
 
@@ -112,8 +110,8 @@ def broadcast_globals_to_nodes(graph, name="broadcast_globals_to_nodes"):
     return utils_tf.repeat(graph.globals, graph.n_node, axis=0)
 
 
-def broadcast_sender_nodes_to_edges(
-    graph, name="broadcast_sender_nodes_to_edges"):
+def broadcast_sender_nodes_to_edges(graph,
+                                    name="broadcast_sender_nodes_to_edges"):
   """Broadcasts the node features to the edges they are sending into.
 
   Args:
@@ -185,7 +183,7 @@ class EdgesToGlobalsAggregator(snt.AbstractModule):
     self._reducer = reducer
 
   def _build(self, graph):
-    _validate_graph(graph, (EDGES,),
+    _validate_graph(graph, (EDGES, ),
                     additional_message="when aggregating from edges.")
     num_graphs = utils_tf.get_num_graphs(graph)
     graph_index = tf.range(num_graphs)
@@ -221,7 +219,7 @@ class NodesToGlobalsAggregator(snt.AbstractModule):
     self._reducer = reducer
 
   def _build(self, graph):
-    _validate_graph(graph, (NODES,),
+    _validate_graph(graph, (NODES, ),
                     additional_message="when aggregating from nodes.")
     num_graphs = utils_tf.get_num_graphs(graph)
     graph_index = tf.range(num_graphs)
@@ -232,14 +230,20 @@ class NodesToGlobalsAggregator(snt.AbstractModule):
 class _EdgesToNodesAggregator(snt.AbstractModule):
   """Agregates sent or received edges into the corresponding nodes."""
 
-  def __init__(self, reducer, use_sent_edges=False,
+  def __init__(self,
+               reducer,
+               use_sent_edges=False,
                name="edges_to_nodes_aggregator"):
     super(_EdgesToNodesAggregator, self).__init__(name=name)
     self._reducer = reducer
     self._use_sent_edges = use_sent_edges
 
   def _build(self, graph):
-    _validate_graph(graph, (EDGES, SENDERS, RECEIVERS,),
+    _validate_graph(graph, (
+        EDGES,
+        SENDERS,
+        RECEIVERS,
+    ),
                     additional_message="when aggregating from edges.")
     num_nodes = tf.reduce_sum(graph.n_node)
     indices = graph.senders if self._use_sent_edges else graph.receivers
@@ -270,10 +274,9 @@ class SentEdgesToNodesAggregator(_EdgesToNodesAggregator):
         per-node features.
       name: The module name.
     """
-    super(SentEdgesToNodesAggregator, self).__init__(
-        use_sent_edges=True,
-        reducer=reducer,
-        name=name)
+    super(SentEdgesToNodesAggregator, self).__init__(use_sent_edges=True,
+                                                     reducer=reducer,
+                                                     name=name)
 
 
 class ReceivedEdgesToNodesAggregator(_EdgesToNodesAggregator):
@@ -300,8 +303,9 @@ class ReceivedEdgesToNodesAggregator(_EdgesToNodesAggregator):
         per-node features.
       name: The module name.
     """
-    super(ReceivedEdgesToNodesAggregator, self).__init__(
-        use_sent_edges=False, reducer=reducer, name=name)
+    super(ReceivedEdgesToNodesAggregator, self).__init__(use_sent_edges=False,
+                                                         reducer=reducer,
+                                                         name=name)
 
 
 def _unsorted_segment_reduction_or_zero(reducer, values, indices, num_groups):
@@ -310,13 +314,15 @@ def _unsorted_segment_reduction_or_zero(reducer, values, indices, num_groups):
   present_indices = tf.unsorted_segment_max(
       tf.ones_like(indices, dtype=reduced.dtype), indices, num_groups)
   present_indices = tf.clip_by_value(present_indices, 0, 1)
-  present_indices = tf.reshape(
-      present_indices, [num_groups] + [1] * (reduced.shape.ndims - 1))
+  present_indices = tf.reshape(present_indices,
+                               [num_groups] + [1] * (reduced.shape.ndims - 1))
   reduced *= present_indices
   return reduced
 
 
-def unsorted_segment_min_or_zero(values, indices, num_groups,
+def unsorted_segment_min_or_zero(values,
+                                 indices,
+                                 num_groups,
                                  name="unsorted_segment_min_or_zero"):
   """Aggregates information using elementwise min.
 
@@ -334,11 +340,13 @@ def unsorted_segment_min_or_zero(values, indices, num_groups,
     A `Tensor` of the same type as `values`.
   """
   with tf.name_scope(name):
-    return _unsorted_segment_reduction_or_zero(
-        tf.unsorted_segment_min, values, indices, num_groups)
+    return _unsorted_segment_reduction_or_zero(tf.unsorted_segment_min, values,
+                                               indices, num_groups)
 
 
-def unsorted_segment_max_or_zero(values, indices, num_groups,
+def unsorted_segment_max_or_zero(values,
+                                 indices,
+                                 num_groups,
                                  name="unsorted_segment_max_or_zero"):
   """Aggregates information using elementwise max.
 
@@ -356,8 +364,8 @@ def unsorted_segment_max_or_zero(values, indices, num_groups,
     A `Tensor` of the same type as `values`.
   """
   with tf.name_scope(name):
-    return _unsorted_segment_reduction_or_zero(
-        tf.unsorted_segment_max, values, indices, num_groups)
+    return _unsorted_segment_reduction_or_zero(tf.unsorted_segment_max, values,
+                                               indices, num_groups)
 
 
 class EdgeBlock(snt.AbstractModule):
@@ -402,7 +410,8 @@ class EdgeBlock(snt.AbstractModule):
     """
     super(EdgeBlock, self).__init__(name=name)
 
-    if not (use_edges or use_sender_nodes or use_receiver_nodes or use_globals):
+    if not (use_edges or use_sender_nodes or use_receiver_nodes
+            or use_globals):
       raise ValueError("At least one of use_edges, use_sender_nodes, "
                        "use_receiver_nodes or use_globals must be True.")
 
@@ -432,13 +441,13 @@ class EdgeBlock(snt.AbstractModule):
         if `graph` has `None` fields incompatible with the selected `use_edges`,
         `use_receiver_nodes`, `use_sender_nodes`, or `use_globals` options.
     """
-    _validate_graph(
-        graph, (SENDERS, RECEIVERS, N_EDGE), " when using an EdgeBlock")
+    _validate_graph(graph, (SENDERS, RECEIVERS, N_EDGE),
+                    " when using an EdgeBlock")
 
     edges_to_collect = []
 
     if self._use_edges:
-      _validate_graph(graph, (EDGES,), "when use_edges == True")
+      _validate_graph(graph, (EDGES, ), "when use_edges == True")
       edges_to_collect.append(graph.edges)
 
     if self._use_receiver_nodes:
@@ -526,9 +535,8 @@ class NodeBlock(snt.AbstractModule):
             received_edges_reducer)
       if self._use_sent_edges:
         if sent_edges_reducer is None:
-          raise ValueError(
-              "If `use_sent_edges==True`, `sent_edges_reducer` "
-              "should not be None.")
+          raise ValueError("If `use_sent_edges==True`, `sent_edges_reducer` "
+                           "should not be None.")
         self._sent_edges_aggregator = SentEdgesToNodesAggregator(
             sent_edges_reducer)
 
@@ -554,7 +562,7 @@ class NodeBlock(snt.AbstractModule):
       nodes_to_collect.append(self._sent_edges_aggregator(graph))
 
     if self._use_nodes:
-      _validate_graph(graph, (NODES,), "when use_nodes == True")
+      _validate_graph(graph, (NODES, ), "when use_nodes == True")
       nodes_to_collect.append(graph.nodes)
 
     if self._use_globals:
@@ -624,14 +632,12 @@ class GlobalBlock(snt.AbstractModule):
         if edges_reducer is None:
           raise ValueError(
               "If `use_edges==True`, `edges_reducer` should not be None.")
-        self._edges_aggregator = EdgesToGlobalsAggregator(
-            edges_reducer)
+        self._edges_aggregator = EdgesToGlobalsAggregator(edges_reducer)
       if self._use_nodes:
         if nodes_reducer is None:
           raise ValueError(
               "If `use_nodes==True`, `nodes_reducer` should not be None.")
-        self._nodes_aggregator = NodesToGlobalsAggregator(
-            nodes_reducer)
+        self._nodes_aggregator = NodesToGlobalsAggregator(nodes_reducer)
 
   def _build(self, graph):
     """Connects the global block.
@@ -648,15 +654,15 @@ class GlobalBlock(snt.AbstractModule):
     globals_to_collect = []
 
     if self._use_edges:
-      _validate_graph(graph, (EDGES,), "when use_edges == True")
+      _validate_graph(graph, (EDGES, ), "when use_edges == True")
       globals_to_collect.append(self._edges_aggregator(graph))
 
     if self._use_nodes:
-      _validate_graph(graph, (NODES,), "when use_nodes == True")
+      _validate_graph(graph, (NODES, ), "when use_nodes == True")
       globals_to_collect.append(self._nodes_aggregator(graph))
 
     if self._use_globals:
-      _validate_graph(graph, (GLOBALS,), "when use_globals == True")
+      _validate_graph(graph, (GLOBALS, ), "when use_globals == True")
       globals_to_collect.append(graph.globals)
 
     collected_globals = tf.concat(globals_to_collect, axis=-1)

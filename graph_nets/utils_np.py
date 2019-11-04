@@ -45,6 +45,7 @@ import networkx as nx
 import numpy as np
 from six.moves import range
 from six.moves import zip  # pylint: disable=redefined-builtin
+from tensorflow.contrib.framework import nest
 
 NODES = graphs.NODES
 EDGES = graphs.EDGES
@@ -165,8 +166,7 @@ def networkx_to_data_dict(graph_nx,
   else:
     try:
       nodes_data = [
-          x[1][GRAPH_NX_FEATURES_KEY]
-          for x in graph_nx.nodes(data=True)
+          x[1][GRAPH_NX_FEATURES_KEY] for x in graph_nx.nodes(data=True)
           if x[1][GRAPH_NX_FEATURES_KEY] is not None
       ]
       if nodes_data:
@@ -175,10 +175,11 @@ def networkx_to_data_dict(graph_nx,
               "Either all the nodes should have features, or none of them")
         nodes = np.array(nodes_data)
     except KeyError:
-      raise KeyError("Missing 'node' field from the graph nodes. "
-                     "This could be due to the node having been silently added "
-                     "as a consequence of an edge addition when creating the "
-                     "networkx instance")
+      raise KeyError(
+          "Missing 'node' field from the graph nodes. "
+          "This could be due to the node having been silently added "
+          "as a consequence of an edge addition when creating the "
+          "networkx instance")
 
   edges = None
   number_of_edges = graph_nx.number_of_edges()
@@ -196,8 +197,7 @@ def networkx_to_data_dict(graph_nx,
     senders = np.array(senders, dtype=np.int32)
     receivers = np.array(receivers, dtype=np.int32)
     edges_data = [
-        x[GRAPH_NX_FEATURES_KEY]
-        for x in edge_attr_dicts
+        x[GRAPH_NX_FEATURES_KEY] for x in edge_attr_dicts
         if x[GRAPH_NX_FEATURES_KEY] is not None
     ]
     if edges_data:
@@ -274,17 +274,21 @@ def data_dict_to_networkx(data_dict):
     raise ValueError("Cannot create a graph with unspecified number of nodes")
 
   if data_dict[EDGES] is not None and data_dict[EDGES].shape[0] > 0:
-    edges_features = [{  # pylint: disable=g-complex-comprehension
-        "index": i,
-        GRAPH_NX_FEATURES_KEY: x
-    } for i, x in enumerate(_unstack(data_dict[EDGES]))]
+    edges_features = [
+        {  # pylint: disable=g-complex-comprehension
+            "index": i,
+            GRAPH_NX_FEATURES_KEY: x
+        } for i, x in enumerate(_unstack(data_dict[EDGES]))
+    ]
     edges_data = zip(data_dict[SENDERS], data_dict[RECEIVERS], edges_features)
     graph_nx.add_edges_from(edges_data)
   elif data_dict[RECEIVERS] is not None and data_dict[RECEIVERS].shape[0] > 0:
-    edges_features = [{  # pylint: disable=g-complex-comprehension
-        "index": i,
-        GRAPH_NX_FEATURES_KEY: None
-    } for i in range(data_dict[RECEIVERS].shape[0])]
+    edges_features = [
+        {  # pylint: disable=g-complex-comprehension
+            "index": i,
+            GRAPH_NX_FEATURES_KEY: None
+        } for i in range(data_dict[RECEIVERS].shape[0])
+    ]
     edges_data = zip(data_dict[SENDERS], data_dict[RECEIVERS], edges_features)
     graph_nx.add_edges_from(edges_data)
 
@@ -353,7 +357,8 @@ def graphs_tuple_to_networkxs(graphs_tuple):
     The list of `networkx.OrderedMultiDiGraph`s.
   """
   return [
-      data_dict_to_networkx(x) for x in graphs_tuple_to_data_dicts(graphs_tuple)
+      data_dict_to_networkx(x)
+      for x in graphs_tuple_to_data_dicts(graphs_tuple)
   ]
 
 
@@ -408,7 +413,8 @@ def graphs_tuple_to_data_dicts(graph):
   if graph.edges is not None:
     graph_of_lists[EDGES] = np.split(graph.edges, edges_splits)
   if graph.receivers is not None:
-    graph_of_lists[RECEIVERS] = np.split(graph.receivers - offset, edges_splits)
+    graph_of_lists[RECEIVERS] = np.split(graph.receivers - offset,
+                                         edges_splits)
     graph_of_lists[SENDERS] = np.split(graph.senders - offset, edges_splits)
   if graph.globals is not None:
     graph_of_lists[GLOBALS] = _unstack(graph.globals)
@@ -422,7 +428,9 @@ def graphs_tuple_to_data_dicts(graph):
 
   result = []
   for index in range(n_graphs):
-    result.append({field: graph_of_lists[field][index] for field in ALL_FIELDS})
+    result.append(
+        {field: graph_of_lists[field][index]
+         for field in ALL_FIELDS})
   return result
 
 
@@ -470,8 +478,8 @@ def _populate_number_fields(data_dict):
   for number_field, data_field in [[N_NODE, NODES], [N_EDGE, RECEIVERS]]:
     if dct.get(number_field) is None:
       if dct[data_field] is not None:
-        dct[number_field] = np.array(
-            np.shape(dct[data_field])[0], dtype=np.int32)
+        dct[number_field] = np.array(np.shape(dct[data_field])[0],
+                                     dtype=np.int32)
       else:
         dct[number_field] = np.array(0, dtype=np.int32)
   return dct
@@ -546,3 +554,35 @@ def get_graph(input_graphs, index):
     raise TypeError("unsupported type: %s" % type(index))
   data_dicts = graphs_tuple_to_data_dicts(input_graphs)[graph_slice]
   return graphs.GraphsTuple(**_concatenate_data_dicts(data_dicts))
+
+
+def unstack_data_dict(stacked_data_dict):
+  """
+    stacked_data_dict is a data_dict with all the features stacked.
+    globals =>
+  """
+
+  def f(arr):
+    if arr is None:
+      return arr
+    l = np.split(arr, arr.shape[0])
+    # remove the leading dimension
+    l = list(map(lambda k: np.squeeze(k, axis=0), l))
+    return l
+
+  d = nest.map_structure(f, stacked_data_dict)
+  bs = len(d['n_node'])
+
+  data_dicts = [{} for _ in range(bs)]
+  for k, l in d.items():
+    for i in range(bs):
+      data_dicts[i][k] = l[i]
+
+  unstacked_data_dicts = []
+  for d in data_dicts:
+    if d['n_node'].ndim > 0:
+      # d is a stacked data dict
+      unstacked_data_dicts.extend(unstack_data_dict(d))
+    else:
+      unstacked_data_dicts.append(d)
+  return unstacked_data_dicts
