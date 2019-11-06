@@ -547,7 +547,7 @@ def make_runnable_in_session(graph, name="make_graph_runnable_in_session"):
 #     return repeated_tensor
 
 
-def repeat(tensor, repeats, axis=0, name="repeat"):
+def repeat(tensor, repeats, axis=0, name="ragged_repeat"):
   """Repeats a `tf.Tensor`'s elements along an axis by custom amounts.
 
   Equivalent to Numpy's `np.repeat`.
@@ -1098,6 +1098,10 @@ def get_num_graphs(input_graphs, name="get_num_graphs"):
     return _get_shape(input_graphs.n_node)[0]
 
 
+def gpu_cumsum(tensor):
+  return tf.cast(tf.cumsum(tf.cast(tensor, tf.float32)), tensor.dtype)
+
+
 def sparse_to_dense_indices(sparse_indices):
   """
     Given [2, 1, 3] our goal is to convert this to the dense index form:
@@ -1119,7 +1123,7 @@ def sparse_to_dense_indices(sparse_indices):
   idx1 = ragged_util.repeat(tf.range(sparse_indices.shape[0]),
                             sparse_indices,
                             axis=-1)
-  cumsum = tf.cumsum(tf.concat([[0], sparse_indices], 0))
+  cumsum = gpu_cumsum(tf.concat([[0], sparse_indices], 0))
   idx2 = ragged_util.repeat_ranges(tf.range(tf.reduce_max(cumsum)), cumsum,
                                    tf.constant(1))
   idx2 -= ragged_util.repeat(cumsum[:-1], sparse_indices, -1)
