@@ -46,13 +46,11 @@ The provided modules are:
     previous features and the features of the adjacent nodes.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
-from graph_nets import blocks
 import sonnet as snt
 import tensorflow as tf
+from graph_nets import blocks
 
 _DEFAULT_EDGE_BLOCK_OPT = {
     "use_edges": True,
@@ -110,13 +108,12 @@ class InteractionNetwork(snt.AbstractModule):
     super(InteractionNetwork, self).__init__(name=name)
 
     with self._enter_variable_scope():
-      self._edge_block = blocks.EdgeBlock(
-          edge_model_fn=edge_model_fn, use_globals=False)
-      self._node_block = blocks.NodeBlock(
-          node_model_fn=node_model_fn,
-          use_sent_edges=False,
-          use_globals=False,
-          received_edges_reducer=reducer)
+      self._edge_block = blocks.EdgeBlock(edge_model_fn=edge_model_fn,
+                                          use_globals=False)
+      self._node_block = blocks.NodeBlock(node_model_fn=node_model_fn,
+                                          use_sent_edges=False,
+                                          use_globals=False,
+                                          received_edges_reducer=reducer)
 
   def _build(self, graph):
     """Connects the InterationNetwork.
@@ -168,19 +165,17 @@ class RelationNetwork(snt.AbstractModule):
     super(RelationNetwork, self).__init__(name=name)
 
     with self._enter_variable_scope():
-      self._edge_block = blocks.EdgeBlock(
-          edge_model_fn=edge_model_fn,
-          use_edges=False,
-          use_receiver_nodes=True,
-          use_sender_nodes=True,
-          use_globals=False)
+      self._edge_block = blocks.EdgeBlock(edge_model_fn=edge_model_fn,
+                                          use_edges=False,
+                                          use_receiver_nodes=True,
+                                          use_sender_nodes=True,
+                                          use_globals=False)
 
-      self._global_block = blocks.GlobalBlock(
-          global_model_fn=global_model_fn,
-          use_edges=True,
-          use_nodes=False,
-          use_globals=False,
-          edges_reducer=reducer)
+      self._global_block = blocks.GlobalBlock(global_model_fn=global_model_fn,
+                                              use_edges=True,
+                                              use_nodes=False,
+                                              use_globals=False,
+                                              edges_reducer=reducer)
 
   def _build(self, graph):
     """Connects the RelationNetwork.
@@ -275,15 +270,16 @@ class GraphNetwork(snt.AbstractModule):
     super(GraphNetwork, self).__init__(name=name)
     edge_block_opt = _make_default_edge_block_opt(edge_block_opt)
     node_block_opt = _make_default_node_block_opt(node_block_opt, reducer)
-    global_block_opt = _make_default_global_block_opt(global_block_opt, reducer)
+    global_block_opt = _make_default_global_block_opt(global_block_opt,
+                                                      reducer)
 
     with self._enter_variable_scope():
-      self._edge_block = blocks.EdgeBlock(
-          edge_model_fn=edge_model_fn, **edge_block_opt)
-      self._node_block = blocks.NodeBlock(
-          node_model_fn=node_model_fn, **node_block_opt)
-      self._global_block = blocks.GlobalBlock(
-          global_model_fn=global_model_fn, **global_block_opt)
+      self._edge_block = blocks.EdgeBlock(edge_model_fn=edge_model_fn,
+                                          **edge_block_opt)
+      self._node_block = blocks.NodeBlock(node_model_fn=node_model_fn,
+                                          **node_block_opt)
+      self._global_block = blocks.GlobalBlock(global_model_fn=global_model_fn,
+                                              **global_block_opt)
 
   def _build(self, graph):
     """Connects the GraphNetwork.
@@ -338,18 +334,18 @@ class GraphIndependent(snt.AbstractModule):
       if edge_model_fn is None:
         self._edge_model = lambda x: x
       else:
-        self._edge_model = snt.Module(
-            lambda x: edge_model_fn()(x), name="edge_model")  # pylint: disable=unnecessary-lambda
+        self._edge_model = snt.Module(lambda x: edge_model_fn()(x),
+                                      name="edge_model")  # pylint: disable=unnecessary-lambda
       if node_model_fn is None:
         self._node_model = lambda x: x
       else:
-        self._node_model = snt.Module(
-            lambda x: node_model_fn()(x), name="node_model")  # pylint: disable=unnecessary-lambda
+        self._node_model = snt.Module(lambda x: node_model_fn()(x),
+                                      name="node_model")  # pylint: disable=unnecessary-lambda
       if global_model_fn is None:
         self._global_model = lambda x: x
       else:
-        self._global_model = snt.Module(
-            lambda x: global_model_fn()(x), name="global_model")  # pylint: disable=unnecessary-lambda
+        self._global_model = snt.Module(lambda x: global_model_fn()(x),
+                                        name="global_model")  # pylint: disable=unnecessary-lambda
 
   def _build(self, graph):
     """Connects the GraphIndependent.
@@ -362,10 +358,9 @@ class GraphIndependent(snt.AbstractModule):
       An output `graphs.GraphsTuple` with updated edges, nodes and globals.
 
     """
-    return graph.replace(
-        edges=self._edge_model(graph.edges),
-        nodes=self._node_model(graph.nodes),
-        globals=self._global_model(graph.globals))
+    return graph.replace(edges=self._edge_model(graph.edges),
+                         nodes=self._node_model(graph.nodes),
+                         globals=self._global_model(graph.globals))
 
 
 class DeepSets(snt.AbstractModule):
@@ -418,18 +413,16 @@ class DeepSets(snt.AbstractModule):
     super(DeepSets, self).__init__(name=name)
 
     with self._enter_variable_scope():
-      self._node_block = blocks.NodeBlock(
-          node_model_fn=node_model_fn,
-          use_received_edges=False,
-          use_sent_edges=False,
-          use_nodes=True,
-          use_globals=True)
-      self._global_block = blocks.GlobalBlock(
-          global_model_fn=global_model_fn,
-          use_edges=False,
-          use_nodes=True,
-          use_globals=False,
-          nodes_reducer=reducer)
+      self._node_block = blocks.NodeBlock(node_model_fn=node_model_fn,
+                                          use_received_edges=False,
+                                          use_sent_edges=False,
+                                          use_nodes=True,
+                                          use_globals=True)
+      self._global_block = blocks.GlobalBlock(global_model_fn=global_model_fn,
+                                              use_edges=False,
+                                              use_nodes=True,
+                                              use_globals=False,
+                                              nodes_reducer=reducer)
 
   def _build(self, graph):
     """Connects the DeepSets network.
@@ -492,12 +485,11 @@ class CommNet(snt.AbstractModule):
 
     with self._enter_variable_scope():
       # Computes $\Psi_{com}(x_j)$ in Eq. (2) of 1706.06122
-      self._edge_block = blocks.EdgeBlock(
-          edge_model_fn=edge_model_fn,
-          use_edges=False,
-          use_receiver_nodes=False,
-          use_sender_nodes=True,
-          use_globals=False)
+      self._edge_block = blocks.EdgeBlock(edge_model_fn=edge_model_fn,
+                                          use_edges=False,
+                                          use_receiver_nodes=False,
+                                          use_sender_nodes=True,
+                                          use_globals=False)
       # Computes $\Phi(x_i)$ in Eq. (2) of 1706.06122
       self._node_encoder_block = blocks.NodeBlock(
           node_model_fn=node_encoder_model_fn,
@@ -508,13 +500,12 @@ class CommNet(snt.AbstractModule):
           received_edges_reducer=reducer,
           name="node_encoder_block")
       # Computes $\Theta(..)$ in Eq.(2) of 1706.06122
-      self._node_block = blocks.NodeBlock(
-          node_model_fn=node_model_fn,
-          use_received_edges=True,
-          use_sent_edges=False,
-          use_nodes=True,
-          use_globals=False,
-          received_edges_reducer=reducer)
+      self._node_block = blocks.NodeBlock(node_model_fn=node_model_fn,
+                                          use_received_edges=True,
+                                          use_sent_edges=False,
+                                          use_nodes=True,
+                                          use_globals=False,
+                                          received_edges_reducer=reducer)
 
   def _build(self, graph):
     """Connects the CommNet network.
@@ -584,10 +575,9 @@ def _received_edges_normalizer(graph,
 
   """
   with tf.name_scope(name):
-    return normalizer(
-        data=graph.edges,
-        segment_ids=graph.receivers,
-        num_segments=tf.reduce_sum(graph.n_node))
+    return normalizer(data=graph.edges,
+                      segment_ids=graph.receivers,
+                      num_segments=tf.reduce_sum(graph.n_node))
 
 
 class SelfAttention(snt.AbstractModule):
@@ -669,8 +659,8 @@ class SelfAttention(snt.AbstractModule):
 
     # Attention weight for each edge.
     # [total_num_edges, num_heads]
-    attention_weights_logits = tf.reduce_sum(
-        sender_keys * receiver_queries, axis=-1)
+    attention_weights_logits = tf.reduce_sum(sender_keys * receiver_queries,
+                                             axis=-1)
     normalized_attention_weights = _received_edges_normalizer(
         attention_graph.replace(edges=attention_weights_logits),
         normalizer=self._normalizer)
@@ -687,3 +677,286 @@ class SelfAttention(snt.AbstractModule):
         attention_graph.replace(edges=attented_edges))
 
     return attention_graph.replace(nodes=aggregated_attended_values)
+
+
+class EdgelessGAT(snt.AbstractModule):
+  """Multi-head self-attention module.
+
+  This is useful when the graph has no edge features
+
+  The module is based on the following papers:
+   * Graph Attention Networks: https://arxiv.org/pdf/1710.10903.pdf
+   * Attention Is All You Need (AIAYN): https://arxiv.org/abs/1706.03762.
+  """
+
+  def __init__(self,
+               attention_projection_model,
+               query_key_product_model,
+               node_model,
+               num_heads,
+               key_size,
+               value_size,
+               name="GAT"):
+    """
+      Args:
+        attention_projection_model: Model used for projection to get
+          query, key and values
+        query_key_product_model: Model used to find "dot product" between
+          queries and keys.
+        node_model: Model applied to node embeddings finally.
+        num_heads: Number of attention heads
+        key_size: Key dimension
+        value_size: value dimension
+        name: The module name.
+    """
+    super().__init__(name=name)
+    self._normalizer = _unsorted_segment_softmax
+    self._attention_projection_model = attention_projection_model
+    self._query_key_product_model = query_key_product_model
+    self._node_model = node_model
+
+  def _build(self, graph_features):
+    """Connects the multi-head self-attention module.
+
+    The self-attention is only computed according to the connectivity of the
+    input graphs, with receiver nodes attending to sender nodes.
+
+    Args:
+      graph_features: Graph containing connectivity information between nodes
+        via the senders and receivers fields. Node A will only attempt to attend
+        to Node B if `attention_graph` contains an edge sent by Node A and
+        received by Node B.
+
+    Returns:
+      An output `graphs.GraphsTuple` with updated nodes containing the
+      aggregated attended value for each of the nodes with shape
+      [total_num_nodes, num_heads, value_size].
+
+    Raises:
+      ValueError: if the input graph does not have edges.
+    """
+    """
+    # TODO(arc): Figure out how to incorporate edge information into
+                 attention updates.
+    """
+    nodes = graph_features.nodes
+
+    num_heads = self.num_heads
+    key_size = self.key_size
+    value_size = self.value_size
+    node_embed_dim = tf.shape(nodes)[-1]
+
+    qkv_size = 2 * key_size + value_size
+    total_size = qkv_size * num_heads  # denote as F
+
+    # [total_num_nodes, d] => [total_num_nodes, F]
+    qkv_flat = self._attention_projection_model(nodes)
+
+    qkv = tf.reshape(qkv_flat, [-1, num_heads, qkv_size])
+    # q => [total_num_nodes, num_heads, key_size]
+    # k => [total_num_nodes, num_heads, key_size]
+    # v => [total_num_nodes, num_heads, value_size]
+    q, k, v = tf.split(qkv, [key_size, key_size, value_size], -1)
+
+    # Sender nodes put their keys and values in the edges.
+    # [total_num_edges, num_heads, query_size]
+    sender_keys = blocks.broadcast_sender_nodes_to_edges(
+        graph_features.replace(nodes=k))
+    # [total_num_edges, num_heads, value_size]
+    sender_values = blocks.broadcast_sender_nodes_to_edges(
+        graph_features.replace(nodes=v))
+
+    # Receiver nodes put their queries in the edges.
+    # [total_num_edges, num_heads, key_size]
+    receiver_queries = blocks.broadcast_receiver_nodes_to_edges(
+        graph_features.replace(nodes=q))
+
+    # Attention weight for each edge.
+    # [total_num_edges, num_heads, 1]
+    attention_weights_logits = snt.BatchApply(self._query_key_product_model)(
+        tf.concat([sender_keys, receiver_queries], axis=-1))
+    # [total_num_edges, num_heads]
+    attention_weights_logits = tf.squeeze(attention_weights_logits, -1)
+
+    # compute softmax weights
+    # [total_num_edges, num_heads]
+    normalized_attention_weights = _received_edges_normalizer(
+        graph_features.replace(edges=attention_weights_logits),
+        normalizer=self._normalizer)
+
+    # Attending to sender values according to the weights.
+    # [total_num_edges, num_heads, value_size]
+    attented_edges = sender_values * normalized_attention_weights[..., None]
+
+    received_edges_aggregator = blocks.ReceivedEdgesToNodesAggregator(
+        reducer=tf.unsorted_segment_sum)
+    # Summing all of the attended values from each node.
+    # [total_num_nodes, num_heads, value_size]
+    aggregated_attended_values = received_edges_aggregator(
+        graph_features.replace(edges=attented_edges))
+
+    # concatenate all the heads and project to required dimension.
+    # cast to [total_num_nodes, num_heads * value_size]
+    aggregated_attended_values = tf.reshape(aggregated_attended_values,
+                                            [-1, num_heads * value_size])
+    # -> [total_num_nodes, node_embed_dim]
+    aggregated_attended_values = self._node_model(aggregated_attended_values)
+
+    return graph_features.replace(nodes=aggregated_attended_values)
+
+
+class EdgeGAT(snt.AbstractModule):
+  """Multi-head self-attention module.
+
+  This is useful when the graph has edge features
+
+  The module is based on the following papers:
+   * Graph Attention Networks: https://arxiv.org/pdf/1710.10903.pdf
+   * Attention Is All You Need (AIAYN): https://arxiv.org/abs/1706.03762.
+  """
+
+  def __init__(self,
+               attention_node_projection_model,
+               attention_edge_projection_model,
+               query_key_product_model,
+               node_model_fn,
+               edge_model_fn,
+               global_model_fn,
+               num_heads,
+               key_size,
+               value_size,
+               edge_block_opt=None,
+               global_block_opt=None,
+               name="GAT"):
+    """
+      Args:
+        attention_node_projection_model: Model used for projection to get
+          query, key and values
+          Final layer dim should be key_size * num_heads
+        attention_edge_projection_model: Model used for projection to get
+          query, key and values
+          Final layer dim should be (key_size + value_size) * num_heads
+        query_key_product_model: Model used to find "dot product" between
+          queries and keys.
+          Final layer dim should be 1.
+        node_model_fn: Model applied to node embeddings finally.
+        edge_model_fn: Model applied to node embeddings finally.
+        num_heads: Number of attention heads
+        key_size: Key dimension
+        value_size: value dimension
+        edge_block_opt: Additional options to be passed to the EdgeBlock. Can
+        contain keys `use_edges`, `use_receiver_nodes`, `use_sender_nodes`,
+        `use_globals`. By default, these are all True.
+        global_block_opt: Additional options to be passed to the GlobalBlock. Can
+          contain the keys `use_edges`, `use_nodes`, `use_globals` (all set to
+          True by default), and `edges_reducer`, `nodes_reducer` (defaults to
+          `reducer`).
+        name: The module name.
+    """
+    super().__init__(name=name)
+    self._attention_node_projection_model = attention_node_projection_model
+    self._attention_edge_projection_model = attention_edge_projection_model
+    self._query_key_product_model = query_key_product_model
+    self.num_heads = num_heads
+    self.key_size = key_size
+    self.value_size = value_size
+
+    edge_block_opt = _make_default_edge_block_opt(edge_block_opt)
+    global_block_opt = _make_default_global_block_opt(global_block_opt,
+                                                      tf.unsorted_segment_sum)
+    # does not make sense without using sender nodes.
+    assert edge_block_opt['use_sender_nodes']
+    with self._enter_variable_scope():
+      self._node_model = node_model_fn()
+      self._edge_block = blocks.EdgeBlock(edge_model_fn=edge_model_fn,
+                                          **edge_block_opt)
+      self._global_block = blocks.GlobalBlock(global_model_fn=global_model_fn,
+                                              **global_block_opt)
+
+  def _build(self, graph_features):
+    """Connects the multi-head self-attention module.
+
+    Uses edge_features to compute key, values and node_features
+    for queries.
+
+    The self-attention is only computed according to the connectivity of the
+    input graphs, with receiver nodes attending to sender nodes.
+
+    Args:
+      graph_features: Graph containing connectivity information between nodes
+        via the senders and receivers fields. Node A will only attempt to attend
+        to Node B if `attention_graph` contains an edge sent by Node A and
+        received by Node B.
+
+    Returns:
+      An output `graphs.GraphsTuple` with updated nodes containing the
+      aggregated attended value for each of the nodes with shape
+      [total_num_nodes, num_heads, value_size].
+
+    Raises:
+      ValueError: if the input graph does not have edges.
+    """
+    """
+    # TODO(arc): Figure out how to incorporate edge information into
+                 attention updates.
+    """
+    edges = self._edge_block(graph_features).edges
+    num_heads = self.num_heads
+    key_size = self.key_size
+    value_size = self.value_size
+    node_embed_dim = tf.shape(graph_features.nodes)[-1]
+
+    # [total_num_nodes, d] => [total_num_nodes, key_size * num_heads]
+    q = self._attention_node_projection_model(graph_features.nodes)
+
+    q = tf.reshape(q,
+                   [tf.reduce_sum(graph_features.n_node), num_heads, key_size])
+
+    # [total_num_edges, (key_size + value_size) * num_heads]
+    # project edge features to get key, values
+    kv = self._attention_edge_projection_model(edges)
+    kv = tf.reshape(kv, [-1, num_heads, key_size + value_size])
+    # k => [total_num_edges, num_heads, key_size]
+    # v => [total_num_edges, num_heads, value_size]
+    k, v = tf.split(kv, [key_size, value_size], -1)
+
+    sender_keys = k
+    sender_values = v
+    # Receiver nodes put their queries in the edges.
+    # [total_num_edges, num_heads, key_size]
+    receiver_queries = blocks.broadcast_receiver_nodes_to_edges(
+        graph_features.replace(nodes=q))
+
+    # Attention weight for each edge.
+    # [total_num_edges, num_heads, 1]
+    attention_weights_logits = snt.BatchApply(self._query_key_product_model)(
+        tf.concat([sender_keys, receiver_queries], axis=-1))
+    # [total_num_edges, num_heads]
+    attention_weights_logits = tf.squeeze(attention_weights_logits, -1)
+
+    # compute softmax weights
+    # [total_num_edges, num_heads]
+    normalized_attention_weights = _received_edges_normalizer(
+        graph_features.replace(edges=attention_weights_logits),
+        normalizer=_unsorted_segment_softmax)
+
+    # Attending to sender values according to the weights.
+    # [total_num_edges, num_heads, value_size]
+    attented_edges = sender_values * normalized_attention_weights[..., None]
+
+    received_edges_aggregator = blocks.ReceivedEdgesToNodesAggregator(
+        reducer=tf.unsorted_segment_sum)
+    # Summing all of the attended values from each node.
+    # [total_num_nodes, num_heads, value_size]
+    aggregated_attended_values = received_edges_aggregator(
+        graph_features.replace(edges=attented_edges))
+
+    # concatenate all the heads and project to required dimension.
+    # cast to [total_num_nodes, num_heads * value_size]
+    aggregated_attended_values = tf.reshape(aggregated_attended_values,
+                                            [-1, num_heads * value_size])
+    # -> [total_num_nodes, node_embed_dim]
+    aggregated_attended_values = self._node_model(aggregated_attended_values)
+
+    return self._global_block(
+        graph_features.replace(nodes=aggregated_attended_values, edges=edges))
