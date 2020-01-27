@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
 """A class that defines graph-structured data.
 
 The main purpose of the `GraphsTuple` is to represent multiple graphs with
@@ -101,12 +100,9 @@ Those assumptions are checked both upon initialization and when replacing a
 field by calling the `replace` or `map` method.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import collections
-
 
 NODES = "nodes"
 EDGES = "edges"
@@ -181,7 +177,7 @@ class GraphsTuple(
 
     `field_fn` is applied exactly once per field in `fields`. The result must
     satisfy the `GraphsTuple` requirement w.r.t. `None` fields, i.e. the
-    `SENDERS` cannot be `None` if the `EDGES` or `RECEIVERS` are not `None`,
+      `SENDERS` cannot be `None` if the `EDGES` or `RECEIVERS` are not `None`,
     etc.
 
     Args:
@@ -194,3 +190,19 @@ class GraphsTuple(
       of applying `field_fn` to them.
     """
     return self.replace(**{k: field_fn(getattr(self, k)) for k in fields})
+
+
+class BipartiteGraphsTuple(
+    collections.namedtuple('BipartiteGraphsTuple', [
+        'left_nodes', 'right_nodes', 'edges', 'globals', 'senders',
+        'receivers', 'n_left_nodes', 'n_right_nodes', 'n_edge'
+    ])):
+
+  def replace(self, **kwargs):
+    output = self._replace(**kwargs)
+    return output
+
+  def map(self, field_fn):
+    return self.replace(
+        **{k: field_fn(getattr(self, k))
+           for k in self._fields})

@@ -1,1 +1,1 @@
-python setup.py install
+pip install --no-deps --force-reinstall . "$@"

@@ -56,17 +56,14 @@ The functions in these modules are able to deal with graphs containing `None`
 fields (e.g. featureless nodes, featureless edges, or no edges).
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import collections
 
-from graph_nets import graphs
-from graph_nets import utils_np
 import six
-from six.moves import range
 import tensorflow as tf
+from graph_nets import graphs, utils_np
+from six.moves import range
 from tensorflow.python.ops.ragged import ragged_util
 
 NODES = graphs.NODES
@@ -1098,8 +1095,10 @@ def get_num_graphs(input_graphs, name="get_num_graphs"):
     return _get_shape(input_graphs.n_node)[0]
 
 
-def gpu_cumsum(tensor):
-  return tf.cast(tf.cumsum(tf.cast(tensor, tf.float32)), tensor.dtype)
+def gpu_cumsum(tensor, **kwargs):
+  # kwargs fed to cumsum
+  return tf.cast(tf.cumsum(tf.cast(tensor, tf.float32), **kwargs),
+                 tensor.dtype)
 
 
 def sparse_to_dense_indices(sparse_indices):
