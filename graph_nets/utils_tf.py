@@ -1122,8 +1122,9 @@ def sparse_to_dense_indices(sparse_indices):
   idx1 = ragged_util.repeat(tf.range(sparse_indices.shape[0]),
                             sparse_indices,
                             axis=-1)
+
   cumsum = gpu_cumsum(tf.concat([[0], sparse_indices], 0))
-  idx2 = ragged_util.repeat_ranges(tf.range(tf.reduce_max(cumsum)), cumsum,
+  idx2 = ragged_util.repeat_ranges(tf.range(cumsum[-1]), cumsum,
                                    tf.constant(1))
   idx2 -= ragged_util.repeat(cumsum[:-1], sparse_indices, -1)
   return tf.stack([idx1, idx2], axis=-1)
